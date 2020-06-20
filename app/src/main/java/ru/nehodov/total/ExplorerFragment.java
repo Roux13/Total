@@ -1,14 +1,17 @@
 package ru.nehodov.total;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Environment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +24,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class ExplorerFragment extends Fragment implements ExplorerListener {
+
+    private static final String FILE_PROVIDER_AUTHORITY = "ru.nehodov.total.file_provider";
 
     private RecyclerView recycler;
 
@@ -35,7 +40,6 @@ public class ExplorerFragment extends Fragment implements ExplorerListener {
     public static ExplorerFragment newInstance() {
         return new ExplorerFragment();
     }
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -82,9 +86,13 @@ public class ExplorerFragment extends Fragment implements ExplorerListener {
         adapter.setFiles(files);
     }
 
+    @Override
+    public void playMusicFile(Intent intent) {
+        startActivity(intent);
+    }
 
     static class ExplorerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-
+        private static final String MP3_EXTENSION = "mp3";
 
         private ExplorerListener listener;
 
@@ -99,7 +107,8 @@ public class ExplorerFragment extends Fragment implements ExplorerListener {
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             final LayoutInflater inflater = LayoutInflater.from(parent.getContext());
             final View view = inflater.inflate(R.layout.explorer_item, parent, false);
-            return new RecyclerView.ViewHolder(view) {};
+            return new RecyclerView.ViewHolder(view) {
+            };
         }
 
         @Override
@@ -111,9 +120,29 @@ public class ExplorerFragment extends Fragment implements ExplorerListener {
                 itemImage.setImageResource(R.drawable.ic_baseline_folder_64);
                 holder.itemView.setOnClickListener(
                         click -> listener.goToDirectory(files.get(position)));
+            } else if (getFileExtension(files.get(position)).toLowerCase().equals(MP3_EXTENSION)) {
+                itemImage.setImageResource(R.drawable.ic_baseline_music_file_64);
+                holder.itemView.setOnClickListener(
+                        click -> {
+                            Log.d(
+                                    RecyclerView.Adapter.class.getSimpleName(),
+                                    files.get(position).getName() + " setMp3Listener");
+                            Intent musicIntent = new Intent();
+                            musicIntent.setAction(Intent.ACTION_VIEW);
+                            musicIntent.setDataAndType(
+                                    FileProvider.getUriForFile(
+                                            listener.getContext(),
+                                            FILE_PROVIDER_AUTHORITY,
+                                            files.get(position)),
+                                    "audio/mp3");
+                            musicIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            listener.playMusicFile(musicIntent);
+                        }
+                );
             } else {
                 itemImage.setImageResource(R.drawable.ic_baseline_insert_drive_file_64);
-                holder.itemView.setOnClickListener(click -> {});
+                holder.itemView.setOnClickListener(click -> {
+                });
             }
 
         }
@@ -131,8 +160,16 @@ public class ExplorerFragment extends Fragment implements ExplorerListener {
             notifyDataSetChanged();
         }
 
+        private static String getFileExtension(File file) {
+            String fileName = file.getName();
+            // если в имени файла есть точка и она не является первым символом в названии файла
+            if (fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0) {
+                // то вырезаем все знаки после последней точки в названии файла,
+                // то есть ХХХХХ.txt -> txt
+                return fileName.substring(fileName.lastIndexOf(".") + 1);
+            } else { // в противном случае возвращаем заглушку, то есть расширение не найдено
+                return "";
+            }
+        }
     }
-
-
-
 }
